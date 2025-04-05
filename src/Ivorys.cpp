@@ -1,12 +1,25 @@
-﻿// Ivorys.cpp : Defines the entry point for the application.
-//
-
-#include "Ivorys.h"
+﻿#include "Ivorys.h"
+//#include "Echo.h"
+#include "FileServer.h"
 
 using namespace std;
 
-int main()
+int main(int argc, char** argv)
 {
-	cout << "Hello CMake." << endl;
+	try {
+		if (argc != 2)
+		{
+			std::cerr << "echo <port>" << std::endl;
+			return 1;
+		}
+		asio::io_context context;
+		server ser(context, std::atoi(argv[1]));
+
+		context.run();
+	}
+	catch (std::exception& e) {
+		std::cerr << "e: " << e.what() << std::endl;
+	}
+
 	return 0;
 }
