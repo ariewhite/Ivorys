@@ -1,4 +1,4 @@
-#include "FileServer.h"
+﻿#include "FileServer.h"
 
 
 session::session(asio::ip::tcp::socket socket) 
@@ -23,12 +23,37 @@ void session::do_read()
 			if (!ec) {
 				buffer_.commit(length);
 				std::istream istream(&buffer_);
+				
+
+				//std::cout << "accept new data: method: " << method << std::endl;
+				std::string received_data(asio::buffers_begin(buffer_.data()),
+					asio::buffers_end(buffer_.data()));
+
+				std::cout << "=== Accepted data===\n";
+				std::cout << received_data << "\n";
+				std::cout << "========================\n";
+
 				std::string method, path, version;
 				istream >> method >> path >> version;
+				
+				std::string response =
+					"HTTP/1.1 200 OK\r\n"
+					"Content-Type: text/plain\r\n"
+					"Content-Length: 13\r\n"
+					"\r\n"
+					"Hello, world!";
+				
+				if (method == "GET") {
+					if (path == "/download") {
+						send_file("full download");
+					}
+					else if (path == "/update")
+					{
+						send_file("part update");
+					}
 
-				std::cout << "accept new data: method: " << method << std::endl;
-				std::string filename = path.substr(1);
-				send_file(filename);
+				}
+				send_file(response);
 			}
 
 			else if (ec != asio::error::eof)

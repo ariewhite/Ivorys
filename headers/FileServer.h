@@ -43,3 +43,12 @@ public:
 	void do_accept();
 
 };
+
+class http_request 
+{
+private: 
+	//enum headers { GET, POST, PUT, DELETE };
+	struct head {
+		std::string method
+	};
+};
