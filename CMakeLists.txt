@@ -13,6 +13,11 @@ endif()
 project ("Client")
 project ("FileServer")
 
+set(OPENSSL_INCLUDE_DIR "C:/Program Files/OpenSSL-Win64/include")
+set(OPENSSL_LIBRARIES "C:/Program Files/OpenSSL-Win64/lib")
+
+find_package(OpenSSL REQUIRED)
+
 
 #add_executable (Ivorys "src/Ivorys.cpp" "headers/Ivorys.h"  "headers/Echo.h")
 add_executable (Client "src/Client.cpp")
@@ -23,6 +28,9 @@ add_executable (FileServer "src/Ivorys.cpp" "headers/Ivorys.h" "headers/FileServ
 
 target_include_directories("Client" PRIVATE ${PROJECT_SOURCE_DIR}/headers)
 target_include_directories("Client" PRIVATE C:/libs/asio-1.30.2/include)
+target_compile_features("FileServer" PRIVATE cxx_std_20)
 
 target_include_directories("FileServer" PRIVATE ${PROJECT_SOURCE_DIR}/headers)
 target_include_directories("FileServer" PRIVATE C:/libs/asio-1.30.2/include)
+target_compile_features("FileServer" PRIVATE cxx_std_20)
+target_link_libraries("FileServer" OpenSSL::SSL OpenSSL::Crypto)

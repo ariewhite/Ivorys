@@ -7,13 +7,13 @@ using namespace std;
 int main(int argc, char** argv)
 {
 	try {
-		if (argc != 2)
+		/*if (argc != 2)
 		{
 			std::cerr << "echo <port>" << std::endl;
 			return 1;
-		}
+		}*/
 		asio::io_context context;
-		server ser(context, std::atoi(argv[1]));
+		server ser(context, /*std::atoi(argv[1])*/ 8080);
 
 		context.run();
 	}
