@@ -33,7 +33,7 @@ void session::do_read()
 
                 if (method == "GET") {
                     if (path == "/sample") {
-                        send_file("C:/Users/murzabaev.c/project/Ivorys/rockyou.txt");
+                        send_file("C:/Users/murzabaev.c/project/Ivorys/sample.txt");
                         return;
                     }
                 }
@@ -54,40 +54,91 @@ void session::do_read()
         });
 }
 
+
 void session::send_file(const std::string& filename)
 {
     // open file
-    auto fileres = open_file(filename);
+    fstream_.open(filename, std::ios::binary | std::ios::ate);
+
+    bool is_open = fstream_.is_open();
+    if (!is_open) {
+        std::cerr << "❌ Failed to open file: " << filename << "\n";
+    }
+    // get file size
+    fstream_.seekg(0, std::ios::end);
+    auto filesize = fstream_.tellg();
+
+    if (filesize == -1) {
+        std::cerr << "❌ Failed to determine file size: " << filename << "\n";   
+    }
+    
     // get hash sum (sha-256)
     auto hash = calculate_sha256(filename);
+    
+    // get file name
+    std::string filenamewithext = "empty.txt";
+    size_t pos = filename.find_last_of("/");
+    if (pos < filename.length())
+        filenamewithext = filename.substr(pos + 1);
 
     // prepare to first response w/ file info
     http_request hello;
-    hello.headers_.emplace("Filename", filename);
+    hello.headers_.emplace("Content-Length", std::to_string(filesize));
+    hello.headers_.emplace("Content-Disposition", "attachment");
+    hello.headers_.emplace("File-Name", filenamewithext);
     hello.headers_.emplace("SHA-256", hash);
-    hello.body_ = "Robot, wait for file:)";
 
-    asio::async_write(socket_, asio::buffer(hello.get_string()),
-        [self = shared_from_this()](asio::error_code, std::size_t) {});
+    std::string x = hello.get_string();
 
+    auto self = shared_from_this();
+    asio::async_write(socket_,
+        asio::buffer(hello.get_string()),
+        [this, self ](asio::error_code ec, std::size_t leng) {
+            if (ec) {
+                std::cerr << "failure to send start request\n";
+            }
+            
+        });
 
-
-    if (fileres) {
+    if (is_open) {
+        fstream_.close();
         std::cout << "📂 File opened successfully\n";
-        std::cout << "DEBUG buffer_ size: " << buffer_.size() << "\n";
-
-        auto buffer = asio::buffer(buffer_.data(), buffer_.size());
-
+            
+        try {
+            from_file = std::make_unique<asio::stream_file>(socket_.get_executor(), filename, asio::stream_file::read_only);
+          /*  from_file.reset(new asio::stream_file(socket_.get_executor()));
+            from_file->open(filename, asio::stream_file::read_only);*/
+        }
+        catch (const std::exception& ptr) {
+            std::cerr << "error with from_file: " << ptr.what() << std::endl;
+        }
+        
+        std::cout << "start---\n";
+        do_read_file();
     }
     else {
-        std::string err =
-            "HTTP/1.1 404 Not Found\r\n"
-            "Content-Length: 0\r\n\r\n";
-
-        asio::async_write(socket_, asio::buffer(err),
-            [self = shared_from_this()](asio::error_code, std::size_t) {});
+        send_error();
+        std::cerr << "sended error to client\n";
     }
 }
+
+
+void session::send_error()
+{
+    std::string err =
+        "HTTP/1.1 404 Not Found\r\n"
+        "Content-Length: 0\r\n\r\n";
+
+    auto self = shared_from_this();
+    asio::async_write(socket_, 
+        asio::buffer(err),
+        [this, self](asio::error_code ec, std::size_t /*n*/) {
+            if (ec) {
+                std::cerr << "error to send erros response\n";
+            }
+        });
+}
+
 
 bool session::open_file(const std::string& path)
 {
@@ -96,8 +147,6 @@ bool session::open_file(const std::string& path)
         std::cerr << "❌ Failed to open file: " << path << "\n";
         return false;
     }
-
-
 
     fstream_.seekg(0, std::ios::end);
     auto filesize = fstream_.tellg();
@@ -116,7 +165,7 @@ bool session::open_file(const std::string& path)
     return true;
 }
 
-void session::do_write_file(const asio::error_code& ec)
+void session::write_file(const asio::error_code& ec)
 {
     if (fstream_)
     {
@@ -151,19 +200,51 @@ void server::do_accept()
         });
 }
 
+// ---------------------------------------------------------------------------------------------
 
 void session::do_read_file()
 {
-    return;
+    std::cout << "read block\n";
+    auto self = shared_from_this();
+    from_file->async_read_some(asio::buffer(data_), 
+        [this, self](asio::error_code ec, std::size_t length) {
+            if (!ec) {
+                do_write_file(length);
+            }
+            else if (ec != asio::error::eof) {
+                std::cerr << "error copy file: " << ec.message() << std::endl;
+            }
+        });
 }
 
 
-void session::do_write_file()
+void session::do_write_file(size_t length)
 {
-    return;
+    //std::cout.write(data_, length);
+
+    /*std::string err =
+        "HTTP/1.1 404 Not Found\r\n"
+        "Content-Length: 0\r\n\r\n";
+
+    asio::async_write(socket_, asio::buffer(err),
+        [self = shared_from_this()](asio::error_code, std::size_t) {});*/
+    
+    auto self = shared_from_this();
+    std::cout << "try write block: " << length << "\n";
+    asio::async_write(socket_, 
+        asio::buffer(data_, length),
+        [this, self](std::error_code ec, std::size_t /*length*/) {
+            if (!ec) {
+                do_read_file();
+            }
+            else {
+                std::cerr << "error copy file - w: " << ec.message() << std::endl;
+            }
+        });
 }
 
 
+// ---------------------------------------------------------------------------------------------
 
 http_request::http_request() {}
 
@@ -171,16 +252,16 @@ std::string http_request::get_string() const
 {
     std::string response =
         "HTTP/1.1 200 OK\r\n"
-        "Content-Type: text/plain\r\n"
-        "Content-Length: " + std::to_string(body_.size()) + "\n";
+        "Content-Type: application/octet-stream\r\n";
         
     for (const auto& x : headers_)
     {
         response.append(x.first + ": " + x.second + "\r\n");
+        //std::cout << x.first << " ... " << x.second;
     }
     response.append("\r\n");
 
-    response.append(body_);
+    response.append(body_ + "\n\n");
     
     return response;
     

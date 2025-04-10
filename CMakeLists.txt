@@ -1,6 +1,6 @@
 ﻿cmake_minimum_required (VERSION 3.14)
 
-set(CXX_STANDARD 20)
+set(CXX_STANDARD 23)
 set(CXX_STANDARD_REQUIRED ON)
 
 
@@ -28,9 +28,9 @@ add_executable (FileServer "src/Ivorys.cpp" "headers/Ivorys.h" "headers/FileServ
 
 target_include_directories("Client" PRIVATE ${PROJECT_SOURCE_DIR}/headers)
 target_include_directories("Client" PRIVATE C:/libs/asio-1.30.2/include)
-target_compile_features("FileServer" PRIVATE cxx_std_20)
+target_compile_features("Client" PRIVATE cxx_std_23)
 
 target_include_directories("FileServer" PRIVATE ${PROJECT_SOURCE_DIR}/headers)
 target_include_directories("FileServer" PRIVATE C:/libs/asio-1.30.2/include)
-target_compile_features("FileServer" PRIVATE cxx_std_20)
+target_compile_features("FileServer" PRIVATE cxx_std_23)
 target_link_libraries("FileServer" OpenSSL::SSL OpenSSL::Crypto)

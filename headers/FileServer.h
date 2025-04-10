@@ -30,30 +30,34 @@ private:
 	asio::ip::tcp::socket socket_;
 	asio::streambuf       buffer_;
 	std::ifstream	      fstream_;
+	std::unique_ptr<asio::stream_file> from_file;
+
 
 private:
 	//const std::string shared_dir = "s";
 	enum { MessageSize = 1024 };
 	std::array<char, MessageSize> buf_;
+	char data_[4096];
 
 public:
 	explicit session(asio::ip::tcp::socket socket);
 
-	//~session();
+	~session() = default;
 
 	void start();
 
 private:
 	void do_read();
 	void send_file(const std::string& value);
-	//void send_http_request(const http_request &request);
+
+	void send_error();
 	template<typename Buffer>
 	void write_buf(Buffer& buffer);
 	bool open_file(std::string const& path);
-	void do_write_file(const asio::error_code& ec);
+	void write_file(const asio::error_code& ec);
 
 	void do_read_file();
-	void do_write_file();
+	void do_write_file(std::size_t length);
 };
 
 
@@ -93,7 +97,7 @@ void session::write_buf(Buffer &buf)
 	asio::async_write(socket_, 
 		buf,
 		[this](std::error_code ec, size_t /*length*/) {
-			do_write_file();
+			write_file(ec);
 		});
 }
 
